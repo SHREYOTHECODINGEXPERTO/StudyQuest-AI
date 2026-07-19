@@ -1,13 +1,13 @@
 'use client';
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, Suspense } from 'react';
 import { useStore } from '@/store/useStore';
 import { api } from '@/lib/api';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Play, Pause, Square, AlertCircle, Volume2, Sparkles, BookOpen, Video, Plus, Smile } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
-export default function ActiveSessionPage() {
+function ActiveSession() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const topicId = searchParams.get('topicId');
@@ -480,3 +480,17 @@ export default function ActiveSessionPage() {
     </div>
   );
 }
+
+export default function ActiveSessionPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex flex-col items-center justify-center min-h-[400px]">
+        <div className="w-12 h-12 border-4 border-cozy-lavender border-t-transparent rounded-full animate-spin"></div>
+        <p className="text-xs text-gray-500 mt-2">Entering study portal...</p>
+      </div>
+    }>
+      <ActiveSession />
+    </Suspense>
+  );
+}
+

@@ -94,3 +94,57 @@ If the `OPENAI_API_KEY` is not provided inside the backend configuration, the ap
 * **Motivation Drops** penalize tab-switching and idle thresholds.
 
 Once calculated, a random companion (e.g. *Dewy the Forest Spirit* or *Bramble the Hedgehog*) is selected to speak cozy, personalized advice.
+
+---
+
+## 🚀 Live Cloud Deployment Guide
+
+Since StudyQuest AI is a full-stack monorepo (Next.js + Express + PostgreSQL), it can be deployed for free using a combination of **Vercel** (frontend), **Render** (backend), and **Neon** (database). 
+
+Here is the step-by-step procedure:
+
+### 1. Database Setup (Neon PostgreSQL)
+1. Sign up for a free account at [Neon.tech](https://neon.tech/).
+2. Create a new project and select the latest **PostgreSQL** version.
+3. Copy the **Connection String** (URI) from the dashboard. It will look like this:
+   `postgresql://[user]:[password]@[hostname]/neondb?sslmode=require`
+
+### 2. Run Database Migrations & Seed Data
+You must initialize the tables and seed the initial assets (village items, companion data, etc.) in your live database before launching the backend:
+1. In your local development machine, open `backend/.env`.
+2. Temporarily set the `DATABASE_URL` to your live **Neon connection string**.
+3. Run the following commands inside the `backend` folder to push the schema and load seed data:
+   ```bash
+   cd backend
+   npx prisma db push
+   npx prisma db seed
+   ```
+4. Restore your local `DATABASE_URL` in `backend/.env` if you want to continue local development.
+
+### 3. Backend Deployment (Render)
+1. Sign up/Log in to [Render.com](https://render.com/).
+2. Click **New +** and select **Web Service**.
+3. Connect your GitHub repository (`SHREYOTHECODINGEXPERTO/StudyQuest-AI`).
+4. Configure the service settings:
+   * **Name**: `studyquest-backend`
+   * **Runtime**: `Node`
+   * **Root Directory**: `backend`
+   * **Build Command**: `npm install && npx prisma generate && npm run build`
+   * **Start Command**: `npm start`
+5. In the **Environment Variables** section, add:
+   * `DATABASE_URL` = *[Your Neon Connection String]*
+   * `JWT_SECRET` = *[A secure, random secret string]*
+   * `PORT` = `5000` (Render will override this, but Express will bind to whatever port is assigned)
+   * `OPENAI_API_KEY` = *[Optional: Your OpenAI key]*
+6. Click **Deploy Web Service** and copy the resulting service URL (e.g., `https://studyquest-backend.onrender.com`).
+
+### 4. Frontend Deployment (Vercel)
+1. Sign up/Log in to [Vercel.com](https://vercel.com/).
+2. Click **Add New** > **Project** and import your GitHub repository.
+3. Configure the project settings:
+   * **Framework Preset**: `Next.js`
+   * **Root Directory**: `frontend`
+4. Under **Environment Variables**, add:
+   * `NEXT_PUBLIC_API_URL` = `https://[your-render-backend-url]/api` (e.g., `https://studyquest-backend.onrender.com/api`)
+5. Click **Deploy**. Vercel will automatically build the Next.js app and host it on a public domain.
+
