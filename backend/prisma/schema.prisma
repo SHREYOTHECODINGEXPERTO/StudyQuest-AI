@@ -1,0 +1,208 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id           String             @id @default(uuid())
+  username     String             @unique
+  email        String             @unique
+  password     String
+  streak       Int                @default(0)
+  lastActive   DateTime?
+  level        Int                @default(1)
+  xp           Int                @default(0)
+  coins        Int                @default(100)
+  energy       Int                @default(100)
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+  sessions     Session[]
+  topics       Topic[]
+  achievements UserAchievement[]
+  inventory    InventoryItem[]
+  villagePlacements VillagePlacement[]
+  journals     Journal[]
+  aiReports    AiReport[]
+  analytics    AnalyticsSnapshot[]
+}
+
+model Topic {
+  id          String    @id @default(uuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  category    String?   // e.g. "Recursion", "Operating Systems", "Machine Learning"
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  notes       Note[]
+  quizzes     Quiz[]
+  sessions    Session[]
+}
+
+model Note {
+  id        String   @id @default(uuid())
+  topicId   String
+  topic     Topic    @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  title     String
+  content   String   @db.Text // Markdown text
+  tags      String?  // Comma-separated tags
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Session {
+  id                 String    @id @default(uuid())
+  userId             String
+  user               User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  topicId            String
+  topic              Topic     @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  startTime          DateTime  @default(now())
+  endTime            DateTime?
+  duration           Int       @default(0) // seconds
+  breaksCount        Int       @default(0)
+  videosOpened       Int       @default(0)
+  notesOpened        Int       @default(0)
+  revisitsCount      Int       @default(0)
+  problemsAttempted  Int       @default(0)
+  quizScore          Float?    // score percentage
+  idleTime           Int       @default(0) // seconds
+  tabSwitches        Int       @default(0)
+  distractionsCount  Int       @default(0)
+  focusScore         Float     @default(100.0) // calculated focus percentage
+  createdAt          DateTime  @default(now())
+}
+
+model Quiz {
+  id        String     @id @default(uuid())
+  topicId   String
+  topic     Topic      @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  title     String
+  createdAt DateTime   @default(now())
+  questions Question[]
+}
+
+model Question {
+  id            String   @id @default(uuid())
+  quizId        String
+  quiz          Quiz     @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  type          String   // "MCQ", "SHORT", "FLASHCARD"
+  questionText  String   @db.Text
+  options       String?  // JSON string array for MCQ choices
+  correctAnswer String   @db.Text
+  explanation   String?  @db.Text
+}
+
+model Flashcard {
+  id          String   @id @default(uuid())
+  userId      String
+  topicId     String
+  front       String   @db.Text
+  back        String   @db.Text
+  interval    Int      @default(1) // in days
+  easeFactor  Float    @default(2.5)
+  repetitions Int      @default(0)
+  nextReview  DateTime @default(now())
+  createdAt   DateTime @default(now())
+}
+
+model Achievement {
+  id          String            @id // unique string ID like "first_quiz", "streak_5"
+  title       String
+  description String
+  badgeIcon   String            // UI SVG key
+  xpReward    Int               @default(50)
+  users       UserAchievement[]
+}
+
+model UserAchievement {
+  userId        String
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  achievementId String
+  achievement   Achievement @relation(fields: [achievementId], references: [id], onDelete: Cascade)
+  unlockedAt    DateTime    @default(now())
+
+  @@id([userId, achievementId])
+}
+
+model Decoration {
+  id           String          @id // unique ID e.g. "plant_lavender", "library_building"
+  name         String
+  type         String          // "PLANT", "FURNITURE", "WALLPAPER", "TREE", "BUILDING", "DECORATION"
+  cost         Int             @default(50)
+  svgContent   String          @db.Text // Inline SVG vector design
+  inventoryItems InventoryItem[]
+}
+
+model Pet {
+  id           String          @id // unique ID e.g. "pet_bunbun", "pet_bramble"
+  name         String
+  type         String          // "BUNNY", "HEDGEHOG", "FOREST_SPIRIT"
+  cost         Int             @default(100)
+  svgContent   String          @db.Text // Inline SVG vector design
+  inventoryItems InventoryItem[]
+}
+
+model InventoryItem {
+  id           String            @id @default(uuid())
+  userId       String
+  user         User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  decorationId String?
+  decoration   Decoration?       @relation(fields: [decorationId], references: [id], onDelete: Cascade)
+  petId        String?
+  pet          Pet?              @relation(fields: [petId], references: [id], onDelete: Cascade)
+  createdAt    DateTime          @default(now())
+  placements   VillagePlacement[]
+}
+
+model VillagePlacement {
+  id              String        @id @default(uuid())
+  userId          String
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  inventoryItemId String
+  inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
+  x               Int           // coordinate grid
+  y               Int           // coordinate grid
+  createdAt       DateTime      @default(now())
+}
+
+model Journal {
+  id            String   @id @default(uuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date          DateTime @default(now())
+  mood          String   // happy, cozy, tired, distracted, stressed, curious
+  summary       String   @db.Text
+  wins          String   @db.Text
+  mistakes      String   @db.Text
+  aiSuggestions String   @db.Text
+}
+
+model AiReport {
+  id                  String   @id @default(uuid())
+  userId              String
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  timestamp           DateTime @default(now())
+  knowledgeGapScore   Float    // percentage
+  avoidanceScore      Float    // percentage
+  motivationDropScore Float    // percentage
+  passiveLearningScore Float   // percentage
+  reportSummary       String   @db.Text
+  coachingAdvice      String   @db.Text
+}
+
+model AnalyticsSnapshot {
+  id                 String   @id @default(uuid())
+  userId             String
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  startDate          DateTime
+  endDate            DateTime
+  totalStudyTime     Int      // seconds
+  averageFocusScore  Float
+  distractionCount   Int
+  activeRecallRatio  Float    // practice/quiz attempts vs reading ratio
+}
